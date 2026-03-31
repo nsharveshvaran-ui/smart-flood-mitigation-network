@@ -7,8 +7,6 @@ sdk: docker
 pinned: false
 app_port: 8000
 base_path: /
-tags:
-  - openenv
 ---
 
 
