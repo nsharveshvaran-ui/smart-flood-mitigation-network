@@ -1,0 +1,13 @@
+# Environments
+venv/
+env/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS Files
+.DS_Store
+shared_state.json
