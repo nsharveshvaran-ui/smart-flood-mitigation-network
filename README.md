@@ -6,11 +6,10 @@ colorTo: indigo
 sdk: docker
 pinned: false
 app_port: 8000
-base_path: /web
+base_path: /
 tags:
   - openenv
 ---
-
 
 
 # 🌊 ADAPTIVE SMART BIO-HYDRAULIC FLOOD MITIGATION NETWORK
