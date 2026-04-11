@@ -462,7 +462,7 @@ def home():
   <header>
     <div>
       <div class="logo">HYDRAULIC<span>_</span>OS <span>v9.0</span></div>
-      <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-top:3px;">GLOBAL COMMAND CENTER</div>
+      <div style="font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-top:3px;">LOCALIZED COMMAND CENTER</div>
     </div>
     <div class="header-right">
       <div class="phase-label">PHASE</div>
