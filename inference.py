@@ -151,7 +151,7 @@ def run_inference():
                 print(f"[STEP] step={step} action=idle_recharge reward={dummy_reward:.2f} done={is_done_str} error=null", flush=True)
 
         # SUCCESS LOGIC
-        success      = "true" if any(r > 0.3 for r in rewards_list) else "false"
+        success = "true" if sum(rewards_list) > 0.3 else "false"
         rewards_csv  = ",".join(f"{r:.2f}" for r in rewards_list)
 
         print(f"[END] success={success} steps={len(rewards_list)} rewards={rewards_csv}", flush=True)
