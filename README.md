@@ -9,101 +9,159 @@ pinned: false
 license: mit
 ---
 
-# 🌊 Hydraulic_OS v9.0
+# 🌊 Hydraulic_OS v9.0  
 ### Adaptive Bio-Hydraulic Flood Mitigation Network
 
-**Hydraulic_OS v9.0** is an industrial-grade "Digital Twin" environment built to test AI decision-making under **Resource Scarcity**, **Stochastic Sensor Faults**, **Ethical Triage**, and **Delayed Consequences**.
-
-> **Why an LLM?**
-> *This environment demands an LLM because it combines partial observability (sensor faults), multi-objective trade-offs (life-safety vs. property), and temporal reasoning across a dynamic storm curve — tasks that static, rule-based scripts cannot generalize across.*
-
-Urban flooding is a non-linear challenge. Static drainage systems fail because they cannot adapt to hardware degradation or reprioritize critical infrastructure during peak surges. This environment treats flood control as a **High-Stakes Control Problem** where saving one urban sector often requires the calculated sacrifice of another, and greedy short-term actions trigger delayed cascading failures.
+> **TL;DR**  
+> A real-time, stateful flood-control simulation where an LLM performs **ethical triage under uncertainty**, balancing life-critical infrastructure, resource constraints, and delayed system dynamics.
 
 ---
 
-## 🏆 Project Overview
+## 🧠 Overview
+
+**Hydraulic_OS v9.0** is an industrial-grade **Digital Twin** designed to evaluate AI decision-making in **high-stakes infrastructure control**.
+
+Unlike static simulations, this system models flood mitigation as a **non-linear control problem** involving:
+- **Resource Scarcity** (limited power grid)
+- **Partial Observability** (sensor faults)
+- **Ethical Trade-offs** (hospital vs residential zones)
+- **Delayed Consequences** (actions causing future cascading failures)
+
+> Saving one zone may require sacrificing another — the agent must decide *when and why*.
+
+---
+
+## 🏆 Key Properties
 
 | Property | Value |
 | :--- | :--- |
 | **Zones** | 2 (Residential A, Hospital B) |
-| **Action Space** | 6 discrete tokens |
-| **Episode Length** | 6 steps (Strictly Enforced) |
-| **Reward Range** | 0.15 – 0.85 (Safety Clamped) |
-| **Stochasticity** | Sensor faults (5%), varying storm intensity, dynamic silt accumulation |
+| **Action Space** | 6 discrete control tokens |
+| **Episode Length** | 6 steps (strictly enforced) |
+| **Reward Bounds** | `[0.15, 0.85]` (validator-safe) |
+| **Stochasticity** | Sensor faults, rainfall variation, silt dynamics |
 
 ---
 
-## 🏗️ Technical Architecture
+## 🏗️ System Architecture
 
-### 🔹 Physics Engine (`server/app.py`)
-The environment is governed by interconnected real-time mechanics:
-* **Drainage Efficiency:** `efficiency = ((100 - blockage) / 100) × thermal_multiplier`
-* **Storm Dynamics:** Rainfall follows a sinusoidal bell curve simulating a realistic weather event with a defined peak.
-* **Turbidity Dynamics (The Trap):** High-pressure flushing clears blockage but blasts silt into the system, massively spiking water Turbidity. Mud settles naturally over time but is stirred up by intense rainfall.
-* **Sensor Faults:** 5% probability per step that rainfall telemetry returns `[SENSOR_FAULT]`, forcing the agent to infer storm intensity from observed water-level deltas.
-* **Thermal Degradation:** If pump core temp exceeds 80°C, `thermal_multiplier` drops to 0.6, silently reducing drainage efficiency.
+### 🔹 Physics Engine & MORL (`server/app.py`)
+
+The environment is governed by a **Multi-Objective Reinforcement Learning (MORL)** formulation:
+
+- **Mathematical Triage**
+Hospital (35%) > Residential (25%) > Thermals (15%) > Grid (15%) > Turbidity (10%)
+- **Storm Dynamics**
+- Sinusoidal rainfall curve (realistic peak behavior)
+- **Turbidity System (Critical Trap)**
+- Flushing clears pipes but spikes turbidity → affects downstream decisions
+- **Sensor Faults**
+- 5% chance of missing rainfall → agent must infer from state changes
+
+---
 
 ### 🔹 Strategic Agent (`inference.py`)
-A memory-enabled agent that maintains a rolling episode history. By feeding the LLM previous turns, it achieves **Temporal Reasoning**, enabling it to:
-* Recognize when water levels rise despite max pumping (indicating the storm is peaking).
-* Infer rainfall intensity when sensors fault based on historical step data.
-* Anticipate the delayed consequences of muddy water, suppressing greedy "Harvest" actions until Turbidity settles.
 
-### 🔹 Evaluator Armor (Anti-Crash Logic)
-Built to survive rigid automated hackathon graders:
-* **Absorbing States:** If the system fails early (e.g., Step 3), the environment freezes and feeds stable terminal frames for the remaining steps, guaranteeing exactly 6 steps are evaluated to prevent parser index crashes.
-* **Precision Bounds:** Rewards are mathematically clamped strictly between `0.15` and `0.85` to neutralize floating-point truncation errors on external validators testing for `(0, 1)` exclusiveness.
+A **memory-enabled, model-based LLM agent**:
+
+- **Forward Simulation Prompting**
+State Diagnosis → Forward Simulation → Action
+Forces causal reasoning before acting.
+
+- **Temporal Awareness**
+- Maintains history across steps
+- Detects storm peaks and delayed effects
+
+---
+
+### 🔹 Evaluator Armor (Anti-Crash Design)
+
+Built for strict external ML validators:
+
+- **Absorbing States**
+- Early failure freezes environment but continues safe outputs
+- **Fixed-Length Episodes**
+- Always returns exactly 6 steps (prevents parser crashes)
+- **Double-Clamped Rewards**
+- Ensures outputs never hit `0.0` or `1.0`
 
 ---
 
 ## 🕹️ Action Space
-The agent selects one of six tokens per step, balancing the 100MW Power Grid against infrastructure health:
 
-| Action | Effect | Cost | Trade-off / Risk |
+| Action | Effect | Cost | Trade-off |
 | :--- | :--- | :--- | :--- |
-| `prioritize_hospital` | Max drain Hospital (B) | 30MW, +12°C | Protects life-safety; risks residential flood. |
-| `prioritize_residential` | Max drain Residential (A) | 30MW, +12°C | Protects property; risks hospital collapse. |
-| `high_pressure_flush` | Resets blockage to 0% | 70MW, +35°C | Restores efficiency; massive thermal spike & **+45% Turbidity penalty**. |
-| `harvest_water` | Drains both zones slightly | Zero | **CRITICAL:** Restores +15% Grid Health, BUT destroys filters (-25% Grid) if Turbidity >= 40%. |
-| `emergency_cool` | Core temp −25°C | −10% Grid | Prevents meltdown; permanent grid damage. |
-| `idle_recharge` | Battery +35MW | Zero | Essential recovery; high flood risk during idle. |
+| `prioritize_hospital` | Max drain Zone B | 30MW, +12°C | Saves lives, risks residential |
+| `prioritize_residential` | Max drain Zone A | 30MW, +12°C | Protects property, risks hospital |
+| `high_pressure_flush` | Clears blockage | 70MW, +35°C | Efficiency boost, +45% turbidity |
+| `harvest_water` | Minor drain both zones | 0 | +15% grid health (fails if turbidity ≥ 40%) |
+| `emergency_cool` | −25°C temp | −10% grid | Prevents meltdown |
+| `idle_recharge` | +35MW battery | 0 | No drainage |
 
 ---
 
-## 🎯 Reward Matrix & Triage
-The system enforces an ethical hierarchy through mathematically differentiated, clamped rewards:
+## 📊 Evaluation Suite (`evaluate.py`)
 
-| Outcome | Reward | Condition |
-| :--- | :--- | :--- |
-| **Mission Success** | `0.85` | Storm survived, all infrastructure secured. |
-| **Strategic Stability** | `~0.55` | Continuous mid-run reward for low risk and harvested water bonuses. |
-| **Residential Failure** | `0.35` | Hospital saved, property damage occurred (Ethical Triage). |
-| **Critical Failure** | `0.15` | Hospital flooded, hardware meltdown, or Grid collapse. |
+The system includes a **quantitative evaluation framework**:
 
----
+- 100-episode simulation runs
+- Comparison against **Random Baseline**
+- Outputs:
+- Average reward
+- Standard deviation
+- Survival rate
+- Distribution plots
 
-## 🖥️ Cybernetic Command Center
-The environment ships with a real-time SCADA-style dashboard accessible via the root endpoint:
-* **CRT Scanline Aesthetic** — mission-control visual style with Orbitron typography.
-* **Live Telemetry** — animated trackers for Battery, Core Temp, Blockage, Turbidity, Grid Health, and Zone Water Levels.
-* **Urgency Alarms** — blinking pulse alerts and dynamic CSS color-shifting (green/amber/red) on critical thresholds.
-* **Sensor Fault Display** — rain bar dims and shows `[SENSOR_FAULT]` in red when telemetry is lost.
-* **Smooth Polling** — AJAX fetch every 1.5s; no page reloads.
+### 📈 Example Results
 
----
+> *(Replace with your actual output)*  
+- +60% higher survival rate vs random agent  
+- ~3× higher average reward  
+- Significantly reduced system failures  
 
-## 💻 How to Run
+```markdown
+![Evaluation Results](final_research_metrics.png)
+🖥️ Cybernetic Command Center
 
-### Prerequisites
-```bash
-pip install fastapi uvicorn openai requests
-Environment VariablesVariableRequiredDescriptionHF_TOKEN✅API key for the LLM providerMODEL_NAMEOptionalModel to use (default: gpt-4)API_BASE_URLOptionalLLM endpoint (default: https://api.openai.com/v1)1. Start the Environment ServerBashuvicorn server.app:app --host 0.0.0.0 --port 8000
-# Dashboard available at http://localhost:8000
-2. Run InferenceBashexport HF_TOKEN=your_api_key_here
+Accessible via / endpoint — a real-time SCADA-style dashboard:
+
+🟢 Live Telemetry
+Battery, temperature, blockage, turbidity, grid health
+⚠️ Dynamic Alerts
+Color-coded thresholds + pulse indicators
+🌧️ Sensor Fault Visualization
+Rain telemetry failure display
+🔄 Smooth Polling
+Updates every 1.5 seconds (no reload)
+💻 Getting Started
+🔧 Installation
+pip install fastapi uvicorn openai requests matplotlib numpy
+🔐 Environment Variables
+Variable	Required	Description
+HF_TOKEN	✅	API key for LLM
+MODEL_NAME	Optional	Default: gpt-4
+API_BASE_URL	Optional	Custom LLM endpoint
+▶️ Run the Environment
+uvicorn server.app:app --host 0.0.0.0 --port 8000
+
+Open dashboard:
+
+http://localhost:8000
+🤖 Run the Agent
+export HF_TOKEN=your_api_key
 python inference.py
-📁 Project Structurehydraulic_os/
-├── inference.py        # Memory-enabled strategic agent
+📊 Run Evaluation
+python evaluate.py
+
+Generates:
+
+final_research_metrics.png
+📁 Project Structure
+hydraulic_os/
+├── evaluate.py                  # Metrics + visualization
+├── inference.py                 # LLM planning agent
 ├── server/
-│   └── app.py          # Multi-zone physics engine + UI
-├── pyproject.toml      # Dependency management
+│   └── app.py                  # Physics engine + UI
+├── final_research_metrics.png  # Output graphs
+├── pyproject.toml
 └── README.md
